@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "writer",
+    srcs = ["writer.go"],
+    importpath = "github.com/hj1980/bazel-proxy/writer",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto:wrapper_go_proto",
+        "@go_googleapis//google/devtools/build/v1:build_go_proto",
+        "@org_golang_google_protobuf//encoding/protowire:go_default_library",
+        "@org_golang_google_protobuf//proto:go_default_library",
+    ],
+)

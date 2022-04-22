@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "mapper_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/hj1980/bazel-proxy/cmd/mapper",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//proto:wrapper_go_proto",
+        "@org_golang_google_protobuf//encoding/protowire:go_default_library",
+        "@org_golang_google_protobuf//proto:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "mapper",
+    embed = [":mapper_lib"],
+    visibility = ["//visibility:public"],
+)

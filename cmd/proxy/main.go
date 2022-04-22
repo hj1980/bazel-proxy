@@ -6,7 +6,10 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 
+	"github.com/hj1980/bazel-proxy/protobuf/types/known/wrapper"
+	"github.com/hj1980/bazel-proxy/writer"
 	build "google.golang.org/genproto/googleapis/devtools/build/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
@@ -22,6 +25,7 @@ var (
 type BuildServer struct {
 	build.UnimplementedPublishBuildEventServer
 	Client build.PublishBuildEventClient
+	writer writer.Writer
 }
 
 func (s *BuildServer) PublishLifecycleEvent(ctx context.Context, in *build.PublishLifecycleEventRequest) (out *emptypb.Empty, err error) {
@@ -30,6 +34,13 @@ func (s *BuildServer) PublishLifecycleEvent(ctx context.Context, in *build.Publi
 		log.Printf("PublishLifecycleEvent called but could not get peer information\n")
 	} else {
 		log.Printf("PublishLifecycleEvent called from: %s\n", p.Addr)
+		// fmt.Printf("\t%s\n", in.BuildEvent)
+
+		s.writer.AppendWrappedData(&wrapper.PublishBuildEventWrapper{
+			Event: &wrapper.PublishBuildEventWrapper_PublishLifecycleEventRequest{in},
+		})
+
+		// fmt.Printf("%s\n", e)
 	}
 
 	clientCtx := context.Background()
@@ -78,6 +89,11 @@ func (s *BuildServer) PublishBuildToolEventStream(downstream build.PublishBuildE
 				downstreamErr <- rerr
 				return
 			}
+
+			//fmt.Printf("\t%s\n", req.OrderedBuildEvent.Event)
+			s.writer.AppendWrappedData(&wrapper.PublishBuildEventWrapper{
+				Event: &wrapper.PublishBuildEventWrapper_PublishBuildToolEventStreamRequest{req},
+			})
 
 			// log.Printf("Proxying upstream: %s", req)
 			serr := upstream.Send(req)
@@ -155,7 +171,20 @@ func main() {
 	}
 	log.Printf("listening: %s\n", lis.Addr())
 
-	bs := &BuildServer{}
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dataPath := wd + "/builds"
+	err = os.Mkdir(dataPath, 0755)
+	if err != nil && !os.IsExist(err) {
+		log.Fatal(err)
+	}
+
+	bs := &BuildServer{
+		writer: writer.NewWindowedDataWriter(dataPath),
+	}
 	bs.Client = build.NewPublishBuildEventClient(conn)
 
 	grpcServer = grpc.NewServer()

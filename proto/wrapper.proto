@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package wrapper;
+
+import "google/devtools/build/v1/publish_build_event.proto";
+
+option go_package = "github.com/hj1980/bazel-proxy/protobuf/types/known/wrapper";
+
+message CollectorInfo {
+    string node = 1;
+}
+
+message PublishBuildEventWrapper {
+    CollectorInfo collector_info = 1;
+
+    oneof event {
+        google.devtools.build.v1.PublishLifecycleEventRequest publish_lifecycle_event_request = 2;
+        google.devtools.build.v1.PublishBuildToolEventStreamRequest publish_build_tool_event_stream_request = 3;
+    }
+}

@@ -1,7 +1,5 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
-package(default_visibility = ["//visibility:public"])
-
 # gazelle:proto package
 # gazelle:prefix github.com/hj1980/bazel-proxy
 gazelle(name = "gazelle")
