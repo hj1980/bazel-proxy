@@ -13,6 +13,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const closeFileAfter = time.Second * 5
+
 type Writer interface {
 	AppendWrappedData(*wrapper.PublishBuildEventWrapper) error
 }
@@ -72,7 +74,7 @@ func (w *WindowedDataWriter) appendToFile(filename string, buf []byte) (err erro
 		if err != nil {
 			return
 		}
-		d.timer = time.AfterFunc(time.Second*5, func() {
+		d.timer = time.AfterFunc(closeFileAfter, func() {
 			d.Lock()
 			defer d.Unlock()
 
@@ -89,6 +91,7 @@ func (w *WindowedDataWriter) appendToFile(filename string, buf []byte) (err erro
 	fmt.Printf("Appending: %d bytes to %s\n", len(buf), filename)
 	d.Lock()
 	defer d.Unlock()
+	d.timer.Reset(closeFileAfter)
 	rawBuf := protowire.AppendBytes(nil, buf)
 	fmt.Printf("Writing: %d bytes to %s\n", len(rawBuf), filename)
 	_, err = d.file.Write(rawBuf)
