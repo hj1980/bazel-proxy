@@ -34,18 +34,13 @@ func (s *BuildServer) PublishLifecycleEvent(ctx context.Context, in *build.Publi
 		log.Printf("PublishLifecycleEvent called but could not get peer information\n")
 	} else {
 		log.Printf("PublishLifecycleEvent called from: %s\n", p.Addr)
-		// fmt.Printf("\t%s\n", in.BuildEvent)
-
 		s.writer.AppendWrappedData(&wrapper.PublishBuildEventWrapper{
 			Event: &wrapper.PublishBuildEventWrapper_PublishLifecycleEventRequest{in},
 		})
-
-		// fmt.Printf("%s\n", e)
 	}
 
 	clientCtx := context.Background()
 	out, err = s.Client.PublishLifecycleEvent(clientCtx, in)
-
 	return
 }
 
@@ -74,30 +69,23 @@ func (s *BuildServer) PublishBuildToolEventStream(downstream build.PublishBuildE
 	go func() {
 		for {
 			req, rerr := downstream.Recv()
-			//fmt.Printf("downstream.Recv: %s\n", rerr)
 
 			if rerr == io.EOF {
 				cserr := upstream.CloseSend()
-				//fmt.Printf("upstream.CloseSend: %s\n", cserr)
-				//fmt.Printf("downstreamErr <- %s\n", cserr)
 				downstreamErr <- cserr
 				return
 			}
 
 			if rerr != nil {
-				//fmt.Printf("downstreamErr <- %s\n", rerr)
 				downstreamErr <- rerr
 				return
 			}
 
-			//fmt.Printf("\t%s\n", req.OrderedBuildEvent.Event)
 			s.writer.AppendWrappedData(&wrapper.PublishBuildEventWrapper{
 				Event: &wrapper.PublishBuildEventWrapper_PublishBuildToolEventStreamRequest{req},
 			})
 
-			// log.Printf("Proxying upstream: %s", req)
 			serr := upstream.Send(req)
-			//fmt.Printf("upstream.Send: %s\n", serr)
 			if serr != nil {
 				downstreamErr <- serr
 				return
@@ -109,23 +97,18 @@ func (s *BuildServer) PublishBuildToolEventStream(downstream build.PublishBuildE
 	go func() {
 		for {
 			res, rerr := upstream.Recv()
-			//fmt.Printf("upstream.Recv: %s\n", rerr)
 
 			if rerr == io.EOF {
-				//fmt.Printf("from upstream: %s\n", rerr)
 				upstreamErr <- nil
 				return
 			}
 
 			if rerr != nil {
-				//fmt.Printf("upsteamErr <- %s\n", rerr)
 				upstreamErr <- rerr
 				return
 			}
 
-			// log.Printf("Proxying downstream: %s", req)
 			serr := downstream.Send(res)
-			//fmt.Printf("downstream.Send: %s\n", rerr)
 			if serr != nil {
 				upstreamErr <- serr
 				return

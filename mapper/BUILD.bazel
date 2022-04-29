@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "mapper",
+    srcs = [
+        "mapper.go",
+        "target.go",
+    ],
+    importpath = "github.com/hj1980/bazel-proxy/mapper",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto:build_event_stream_go_proto",
+        "@go_googleapis//google/devtools/build/v1:build_go_proto",
+    ],
+)

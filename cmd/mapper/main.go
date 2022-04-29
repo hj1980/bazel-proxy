@@ -7,7 +7,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/hj1980/bazel-proxy/mapper"
+	"github.com/hj1980/bazel-proxy/protobuf/types/known/build_event_stream"
 	"github.com/hj1980/bazel-proxy/protobuf/types/known/wrapper"
+	build "google.golang.org/genproto/googleapis/devtools/build/v1"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 )
@@ -20,7 +23,10 @@ var (
 )
 
 func main() {
-	//log.Printf("Mapper started\n")
+
+	mappers := []mapper.BazelBuildEventMapper{
+		mapper.NewTargetMapper(),
+	}
 
 	flag.Parse()
 
@@ -30,6 +36,7 @@ func main() {
 	}
 
 	f, err := os.Open(*filename)
+	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,7 +52,6 @@ func main() {
 			log.Printf("Error when trying to populate viBuf: %s\n", err)
 			return
 		}
-		//log.Printf("Read %d bytes\n", n)
 
 		v, n := protowire.ConsumeVarint(viBuf)
 		if n < 0 {
@@ -53,8 +59,6 @@ func main() {
 			log.Printf("Error when trying to consume varint: %s\n", err)
 			return
 		}
-		//log.Printf("Message is %d bytes, Varint was %d bytes\n", v, n)
-
 		if v > maximumMessageSize {
 			err = fmt.Errorf("Maximum message size exceeded: %d", v)
 			return
@@ -68,11 +72,6 @@ func main() {
 		}
 
 		buf := append(viBuf[n:], remainingBuf...)
-		//log.Printf("remainingBuf is %d bytes, buf is %d bytes\n", len(remainingBuf), len(buf))
-
-		// fmt.Printf("%+2x\n", buf)
-		// fmt.Printf("%s\n", buf)
-
 		e := &wrapper.PublishBuildEventWrapper{}
 		err = proto.Unmarshal(buf, e)
 		if err != nil {
@@ -80,10 +79,20 @@ func main() {
 			return
 		}
 
-		fmt.Printf("%+v\n", e)
-
-		// log.Printf("Message is %d bytes, Varint was %d bytes\n", v, n)
+		switch vbe := e.Event.(type) {
+		case *wrapper.PublishBuildEventWrapper_PublishBuildToolEventStreamRequest:
+			switch vbbe := vbe.PublishBuildToolEventStreamRequest.OrderedBuildEvent.Event.Event.(type) {
+			case *build.BuildEvent_BazelEvent:
+				bbe := &build_event_stream.BuildEvent{}
+				err = proto.Unmarshal(vbbe.BazelEvent.Value, bbe)
+				if err != nil {
+					log.Printf("Error when trying to unmarshal: %s\n", err)
+					return
+				}
+				for _, mapper := range mappers {
+					mapper.HandleBazelBuildEvent(vbe.PublishBuildToolEventStreamRequest.OrderedBuildEvent.Event, bbe)
+				}
+			}
+		}
 	}
-
-	f.Close()
 }

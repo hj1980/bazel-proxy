@@ -99,12 +99,10 @@ func (w *WindowedDataWriter) appendToFile(filename string, buf []byte) (err erro
 }
 
 func (w *WindowedDataWriter) AppendWrappedData(d *wrapper.PublishBuildEventWrapper) (err error) {
-	// fmt.Printf("Appending data: %T\n", d.Event)
 	var filename string
 
 	switch e := d.Event.(type) {
 	case *wrapper.PublishBuildEventWrapper_PublishLifecycleEventRequest:
-		// fmt.Printf("%+v\n", e.PublishLifecycleEventRequest.BuildEvent.StreamId)
 		filename, err = generateShortFilenameFromStreamId(e.PublishLifecycleEventRequest.BuildEvent.StreamId)
 		if err != nil {
 			return
@@ -120,7 +118,6 @@ func (w *WindowedDataWriter) AppendWrappedData(d *wrapper.PublishBuildEventWrapp
 		}
 
 	case *wrapper.PublishBuildEventWrapper_PublishBuildToolEventStreamRequest:
-		// fmt.Printf("%+v\n", e.PublishBuildToolEventStreamRequest.OrderedBuildEvent.StreamId)
 		filename, err = generateShortFilenameFromStreamId(e.PublishBuildToolEventStreamRequest.OrderedBuildEvent.StreamId)
 		if err != nil {
 			return
@@ -140,6 +137,5 @@ func (w *WindowedDataWriter) AppendWrappedData(d *wrapper.PublishBuildEventWrapp
 		return
 	}
 
-	// fmt.Printf("Would write to %s\n", w.DataPath+"/"+filename)
 	return
 }
